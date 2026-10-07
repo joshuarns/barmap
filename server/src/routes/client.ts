@@ -48,7 +48,7 @@ export function mountClient(app: Express) {
       const slug = String(req.params.slug)
       const bar = /^[a-z0-9-]{1,120}$/.test(slug)
         ? (await query(
-            `SELECT pb.slug, pb.name, pb.description, pb.address, pb.city, pb.state, pb.postal_code, pb.country, pb.latitude, pb.longitude,
+            `SELECT pb.slug, pb.name, pb.description, pb.address, pb.neighborhood, pb.city, pb.state, pb.postal_code, pb.country, pb.latitude, pb.longitude,
                     pb.phone, pb.price_range, c.name AS category,
                     (SELECT image_url FROM bar_images i WHERE i.bar_id = pb.id AND i.revision_id IS NULL ORDER BY is_cover DESC, sort_order LIMIT 1) AS image
              FROM public_bars pb LEFT JOIN categories c ON c.id = pb.category_id WHERE pb.slug = $1`,
@@ -60,7 +60,7 @@ export function mountClient(app: Express) {
       const image = bar.image ? (bar.image.startsWith('http') ? bar.image : `${site}${bar.image}`) : undefined
       const description = (bar.description ?? `${bar.category ?? 'Bar'} en ${bar.city}`).slice(0, 155)
       sendIndex(res, {
-        title: `${bar.name} · ${bar.category ?? 'Bar'} en ${bar.city} · Barmap`,
+        title: `${bar.name} · ${bar.category ?? 'Bar'} en ${bar.neighborhood ?? bar.city} · Barmap`,
         description,
         url,
         image,

@@ -2,7 +2,7 @@
 
 Plataforma para descubrir bares y gestionar establecimientos con moderación manual.
 
-Arquitectura y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+Arquitectura y decisiones: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) · Producción: [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md).
 
 ## Desarrollo
 
@@ -41,3 +41,6 @@ Vite reenvía `/api` al puerto 4000 en desarrollo.
 | `npm run create-admin -- --email … --name …` | Crea o promueve un administrador |
 | `npm run typecheck` | Comprueba tipos del cliente y del servidor |
 | `npm run build` | Build de producción del cliente |
+| `npm run build:all` | Compila cliente y servidor para producción |
+| `npm start` | Arranca el servidor compilado (API + sitio) |
+| `npm test` | Pruebas del cliente y del servidor (usa la BD `barmap_test`) |

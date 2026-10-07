@@ -1,6 +1,6 @@
 # Barmap · Arquitectura
 
-> Estado: **Etapas 1–5 completadas** (sistema de diseño; sitio público; autenticación y solicitudes; panel del propietario; panel administrativo y moderación).
+> Estado: **Etapas 1–7 completadas.** Pendientes de producción (servicios externos) en [DESPLIEGUE.md](DESPLIEGUE.md#pendientes-antes-del-lanzamiento).
 > Este documento es la referencia para las etapas siguientes.
 
 ## 1. Stack
@@ -28,44 +28,45 @@ Mismo patrón que los proyectos anteriores (mantelek): SPA en React con Vite en 
 barmap/
 ├─ index.html · vite.config.ts · tsconfig*.json
 ├─ src/
-│  ├─ main.tsx                 # Providers (Toast) + RouterProvider
-│  ├─ router/index.tsx         # Mapa completo de rutas
-│  ├─ styles/index.css         # Tokens de diseño (@theme) y utilidades
-│  ├─ types/domain.ts          # Enums del dominio (espejo de los ENUM de SQL)
-│  ├─ lib/                     # cn(), formateadores
-│  ├─ config/env.ts
+│  ├─ main.tsx                 # QueryClient + Toast + RouterProvider
+│  ├─ router/                  # Rutas (carga diferida por área) y guardas de rol
+│  ├─ styles/index.css         # Tokens de diseño (@theme), mapa y utilidades
+│  ├─ types/                   # Dominio (espejo de los ENUM de SQL), API, sesión
+│  ├─ lib/                     # api (fetch/subidas), cn, formateadores
+│  ├─ hooks/                   # geolocalización, metadatos SEO, debounce
+│  ├─ features/                # Lógica por dominio: bars, auth, owner, admin, engagement
 │  ├─ components/
-│  │  ├─ ui/                   # Primitivas: Button, Field, Input, Badge, Modal, Toast, Stepper…
-│  │  ├─ brand/                # Logo
-│  │  ├─ bars/                 # BarCard, HeroSearch, CategoryRail, PriceRange, LocationPrompt
-│  │  ├─ dashboard/            # StatCard (y tablas, filtros… en Etapas 4-5)
-│  │  └─ layout/               # PublicLayout, Navbar, Footer, MobileTabBar, DashboardLayout
-│  └─ pages/
-│     ├─ public/ · owner/ · admin/ · auth/
-│     └─ design/               # Guía viva del sistema de diseño (/design)
+│  │  ├─ ui/                   # Primitivas: Button, Field, Badge, Modal, Toast, Stepper…
+│  │  ├─ bars/ · map/          # Tarjetas, buscador, mapas Leaflet
+│  │  ├─ charts/               # AreaChart (estadísticas)
+│  │  ├─ admin/ · dashboard/   # Actividad, tarjetas de métricas
+│  │  └─ layout/               # Layouts público, auth y panel; navegación; notificaciones
+│  ├─ pages/                   # public · auth · account · owner · admin · design
+│  └─ test/                    # Pruebas unitarias (vitest)
 ├─ server/
-│  └─ src/
-│     ├─ index.ts · config.ts  # Arranque y variables validadas con zod
-│     ├─ db/schema.sql         # Esquema idempotente + semillas de catálogos
-│     ├─ db/pool.ts · migrate.ts
-│     ├─ lib/http.ts           # HttpError, asyncHandler
-│     ├─ middleware/           # errorHandler (+ auth/roles en Etapa 3)
-│     └─ routes/               # health (+ bars, auth, owner, admin…)
-└─ docs/ARQUITECTURA.md
+│  ├─ src/
+│  │  ├─ app.ts · index.ts     # App Express (helmet, CORS, rutas) y arranque
+│  │  ├─ config.ts             # Variables validadas con zod
+│  │  ├─ db/                   # schema.sql, migrate, seed, createAdmin
+│  │  ├─ lib/                  # auth (JWT/bcrypt/tokens), images (sharp), storage, mailer, validación
+│  │  ├─ middleware/           # authenticate/roles, CSRF, límites, errores
+│  │  ├─ services/             # publicBars, ownerBars, moderation, adminPlatform, engagement, audit
+│  │  └─ routes/               # public, auth, me, owner*, admin*, geocode, client (SPA + SEO)
+│  └─ test/                    # Pruebas de integración (vitest + supertest, BD barmap_test)
+└─ docs/                       # ARQUITECTURA.md · DESPLIEGUE.md
 ```
 
 ## 3. Rutas
 
-| Zona | Ruta | Etapa |
-|---|---|---|
-| Pública | `/` home · `/explorar` (lista/mapa, filtros en query string) · `/bares/:slug` | 2 |
-| Pública | `/favoritos` · `/ayuda` | 6 |
-| Auth | `/entrar` · `/registro` · `/registra-tu-bar` (solicitud de propietario) | 3 |
-| Propietario | `/panel` · `/panel/establecimientos` · `/panel/establecimientos/nuevo` · `/panel/establecimientos/:id` · `/panel/estadisticas` · `/panel/cuenta` | 3-4 |
-| Admin | `/admin` · `/admin/solicitudes[/:id]` · `/admin/moderacion[/:id]` · `/admin/establecimientos` · `/admin/catalogos` · `/admin/reportes` · `/admin/historial` | 5 |
-| Interna | `/design` guía del sistema de diseño | 1 |
+| Zona | Rutas |
+|---|---|
+| Pública | `/` · `/explorar` (lista/mapa, filtros en la URL) · `/bares/:slug` · `/favoritos` · `/ayuda` · `/legal/terminos` · `/legal/privacidad` |
+| Cuenta | `/entrar` · `/registro` · `/verificar-correo` · `/olvide-contrasena` · `/restablecer-contrasena` · `/cuenta` · `/registra-tu-bar` |
+| Propietario | `/panel` · `/panel/establecimientos[/nuevo]` · `/panel/establecimientos/:id[/vista-previa]` · `/panel/estadisticas` · `/panel/cuenta` · `/panel/ayuda` |
+| Admin | `/admin` · `/admin/solicitudes[/:id]` · `/admin/moderacion[/:id]` · `/admin/establecimientos[/:id/editar]` · `/admin/usuarios[/:id]` · `/admin/catalogos` · `/admin/reportes` · `/admin/historial` |
+| Interna | `/design` guía del sistema de diseño |
 
-Todas las rutas ya existen. Las que no están implementadas muestran un marcador explícito de "Etapa N" (nunca botones falsos).
+El sitio público se descarga en el paquete principal; cuenta, panel y admin se cargan bajo demanda.
 
 ### API (prefijo `/api`)
 
@@ -75,9 +76,12 @@ Todas las rutas ya existen. Las que no están implementadas muestran un marcador
 | `POST /auth/register · login · logout · verify-email · resend-verification · forgot-password · reset-password`, `GET /auth/me` | Público con límite de peticiones (implementado, Etapa 3) |
 | `GET/POST /owner/application` | Sesión + correo verificado + rol `visitor` + cuenta activa (implementado) |
 | `GET /admin/applications[/:id]`, `POST /admin/applications/:id/decision` | Admin activo; decisión transaccional + auditoría + notificación + correo (implementado) |
-| `GET/POST /me/favorites` | Usuario autenticado (Etapa 6) |
-| `/owner/overview`, `/owner/bars[/:id]`, `/owner/bars/:id/{submit,revision,images,images/order}`, `/owner/geocode` | `role=owner` (lectura aunque esté suspendida; escritura solo activa) **y** `owner_id = req.user.id` en cada consulta → 404 si no es suyo (implementado, Etapa 4) |
+| `GET /me/favorites[/ids]`, `PUT·DELETE /me/favorites/:barId`, `GET /me/notifications`, `POST /me/notifications/read` | Usuario autenticado (cualquier rol) |
+| `POST /bars/:slug/events`, `POST /bars/:slug/reports` | Público, con límite de peticiones; reportes con honeypot |
+| `/owner/overview`, `/owner/bars[/:id]`, `/owner/bars/:id/{submit,revision,images,images/order}` | `role=owner` (lectura aunque esté suspendida; escritura solo activa) **y** `owner_id = req.user.id` en cada consulta → 404 si no es suyo (implementado, Etapa 4) |
 | `/admin/overview`, `/admin/moderation`, `/admin/bars[/:id]`, `/admin/bars/:id/{decision,visibility}`, `PUT /admin/bars/:id`, `/admin/users[/:id]`, `/admin/users/:id/status`, `/admin/catalog/:kind[/:id]`, `/admin/logs` | `role=admin` activo; cada acción escribe en `moderation_logs` dentro de la misma transacción (implementado, Etapa 5) |
+| `GET /owner/stats` | Propietario |
+| `GET /admin/reports`, `POST /admin/reports/:id/resolve`, `POST /admin/bars/:id/verify` | Admin activo, con auditoría |
 | `GET /geocode` | `owner` o `admin` activos |
 
 ### Búsqueda pública (`GET /api/bars`)
@@ -129,6 +133,23 @@ Escalabilidad: la búsqueda textual con `unaccent` no usa índice; con miles de 
 - **Catálogos**: crear, renombrar (el slug no cambia), cambiar icono, ordenar y activar/desactivar. Solo se puede eliminar lo que no está en uso.
 - **Historial** (`/admin/historial`): `moderation_logs` con filtros por tipo, acción, texto y fechas, y enlace a cada entidad.
 
+### Interacción y analítica (Etapa 6)
+
+- **Favoritos**: solo de bares públicos. Si un bar deja de ser público, desaparece de la lista sin borrar el favorito.
+- **Analítica**: `bar_daily_stats` agregada por día (visitas, "Cómo llegar", compartidos, guardados). Cada visitante cuenta una vez por bar, tipo y día mediante `event_dedupe`, que guarda un HMAC de IP y navegador y se purga a los 3 días. No se guardan IPs.
+- **Reportes**: anónimos o con sesión; un reporte abierto por visitante y bar cada 24 h. El admin los atiende o descarta y queda en la auditoría.
+- **Notificaciones**: se generan en cada decisión del admin; campana con no leídas.
+- **Verificado**: `bars.verified_at`, lo asigna el admin y se muestra como insignia pública.
+
+### Producción, seguridad y rendimiento (Etapa 7)
+
+- **Un solo despliegue**: si existe `CLIENT_DIST`, Express sirve el frontend compilado. `/bares/:slug` incluye en el HTML título, descripción, Open Graph, canonical y JSON-LD (los bots no ejecutan JS). También genera `sitemap.xml` y `robots.txt`, y pone `noindex` en las áreas privadas.
+- **Cabeceras** (helmet): CSP estricta (`script-src 'self'`; imágenes solo de self, Unsplash y Stadia), HSTS, `frame-ancestors 'none'` y `Referrer-Policy`.
+- **Pruebas**: `npm test`. Las de integración del servidor (25) cubren visibilidad pública, roles, CSRF, solicitudes, alta, moderación y versionado, suspensión, favoritos, analítica e integridad de la BD. Las unitarias del cliente cubren filtros, validación y horarios.
+- **Rendimiento**: carga diferida por área (paquete principal de unos 99 KB comprimido), Leaflet en su propio fragmento y miniaturas WebP en las tarjetas.
+- **Accesibilidad**: enlace "Saltar al contenido", foco visible, etiquetas en todos los controles, gráfica navegable con teclado y tabla equivalente.
+- **Errores**: página de error de ruta (incluido "hay una versión nueva, recarga"); JSON mal formado responde 400.
+
 ## 4. Modelo de datos
 
 Definido en [`server/src/db/schema.sql`](../server/src/db/schema.sql). Entidades:
@@ -166,9 +187,10 @@ published ──admin──▶ suspended ──admin──▶ published
 3. **Estado de la cuenta en cada petición**: el middleware carga el usuario. Si está suspendido, las rutas de gestión devuelven 403. Si `token_version` no coincide, el JWT deja de ser válido.
 4. **Endpoints públicos solo contra `public_bars`**, con serializadores explícitos (nunca `SELECT *` hacia el cliente).
 5. **Auditoría transaccional**: cambio de estado y `moderation_logs` en el mismo `BEGIN … COMMIT`.
-6. **Imágenes**: tipo real verificado con sharp (no por extensión), JPG/PNG/WebP, máx. 8 MB, se recodifican a WebP y se eliminan los metadatos EXIF (incluida la ubicación GPS).
+6. **Imágenes**: tipo real verificado con sharp (no por extensión), JPG/PNG/WebP/HEIC, máx. 8 MB, mínimo 1000×600, se recodifican a WebP y se eliminan los metadatos EXIF (incluida la ubicación GPS).
 7. **Antispam**: límite de peticiones en auth, solicitudes y reportes. Campo honeypot en formularios públicos. Correo verificado antes de solicitar acceso como propietario.
 8. **Contraseñas** con bcrypt (coste 12). Cookies `httpOnly`, `Secure` y `SameSite=Lax`. CORS con lista blanca de orígenes.
+9. **Cabeceras HTTP** con helmet y CSP; las mutaciones exigen JSON y `Origin` permitido (o multipart con `Origin`).
 
 ## 7. Sistema de diseño
 
@@ -193,5 +215,5 @@ Guía viva en **`/design`**. Resumen:
 3. ✅ Auth, roles, verificación de correo, recuperación de contraseña, solicitud de propietarios y su revisión por el admin
 4. ✅ Panel del propietario (resumen, listado, alta y edición en 5 pasos, fotos, mapa, vista previa, envío a revisión y revisiones de bares publicados)
 5. ✅ Panel de administración: resumen, cola de moderación, comparación de revisiones, decisiones, suspensión de bares y cuentas, edición, catálogos e historial
-6. Mapa completo, filtros avanzados, favoritos, reportes, notificaciones y analítica
-7. Revisión de seguridad, pruebas, rendimiento y SEO (Open Graph, JSON-LD `BarOrPub`)
+6. ✅ Favoritos, reportes, notificaciones, estadísticas del propietario, insignia de verificado y centro de ayuda
+7. ✅ Seguridad (helmet/CSP), pruebas automatizadas, carga diferida, SEO en servidor, sitemap, accesibilidad, páginas legales y guía de despliegue
