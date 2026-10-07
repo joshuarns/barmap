@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "barmap-web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev"], "port": 5180, "autoPort": true },
+    { "name": "barmap-api", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev:server"], "port": 4000, "autoPort": false }
+  ]
+}
